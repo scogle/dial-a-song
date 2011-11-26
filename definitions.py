@@ -1,0 +1,1 @@
+SESSION_ID = service.Request('startSession').getResult('sessionID')
