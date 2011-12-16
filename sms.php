@@ -30,9 +30,6 @@ $action = $queryArray[0];
 $arg = implode(' ', array_slice($queryArray, 1));
 
 
-
-// 
-
 // Helper functions for common tasks
 
 function createCall($songIDs) {
@@ -44,7 +41,6 @@ function createCall($songIDs) {
   		// Read TwiML at this URL when a call connects
   		'http://pygmy.nfshost.com/pygmy.php?songIDs=' . $songIDs
 	);
-	return(true);
 }
 
 function createSMS($string, $recipient=null) { // Since PHP doesn't allow for using globals as arg defaults I'm using null to ensmoothen things.
@@ -56,7 +52,6 @@ function createSMS($string, $recipient=null) { // Since PHP doesn't allow for us
 		'from' => 	$from
 	));
 	print $response;
-	return(true);
 }
 
 
@@ -85,7 +80,7 @@ function search($query){
 		return;
 	}
 	
-	$responseString .= "\r\n*Sponsored by SexDrugs.com";
+	$responseString .= "\r\n*Sponsored by Grooveshark.com";
 		
 	createSMS($responseString);
 	
@@ -130,9 +125,12 @@ function top($query) {
 }
 
 function share($token, $recipient /* Different from the global $to */) {
-	global $to;
-	createSMS($to . " has shared a song with you! Reply '" . $token . "' to hear it now.", $recipient);
-	//createSMS("Success! " . $recipient . " has receieved your song.");
+	global $to, $gsapi;
+	$songID = $gsapi->getSongIDFromTinysongBase62($token);
+	//$songInfo = $gsapi->getSongInfo($songID);
+	
+	createSMS($to . " has shared '" . $songInfo['SongName'] . "' by " . $songInfo['ArtistName'] . " with you! Reply '" . $token . "' to hear it now.", $recipient);
+	#createSMS("Success! " . $recipient . " has receieved your song.");
 }
 
 function help() {
@@ -146,24 +144,28 @@ function error(){
 function debug($token){
 	global $gsapi;
 	$id = $gsapi->getSongIDFromTinysongBase62($token);
-	$songURL = $gsapi->getStreamKeyStreamServer($id);
-	createSMS($songURL);
+	$songObj = $gsapi->getStreamKeyStreamServer($id);
+	$url = $songObj['url'];
+	$dotExplosion = explode('.', $url);
+	$justTheServer = end(explode('//', $dotExplosion[0]));
+	
+	createSMS($token . " : " . $url . " was reported to have failed (" . $id . ")", 9704029786);
 }
 
 
 if (strtolower($action) == 'search' or strtolower($action) == 's') { search($arg); }
 else if (strtolower($action) == 'lucky' or strtolower($action) == 'l') { lucky($arg); }
 else if (strtolower($action) == 'info' or strtolower($action) == 'i') { help(); }
-else if (strtolower($action) == 'top5' or strtolower($action) == 't') { top($arg); }
+else if (strtolower($action) == 'top5' or strtolower($action) == 't' or strtolower($action) == 't5') { top($arg); }
 else if (strtolower($action) == 'share' or strtolower($action) == 'shr') { 
 	if (count($queryArray) != 4) { error(); }
 	else {
 		$token = $queryArray[1];
-		$recipient = $queryArray[3];
+		$recipient = $queryArray[2];
 		share($token, $recipient);
 	} 
 }
-else if ($action == 'Kuva81n') { debug($arg); }
+else if (strtolower($action) == 'debug') { debug($arg); }
 else { play($queryArray); }
 
 ?>
